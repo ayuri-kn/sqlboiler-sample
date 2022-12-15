@@ -955,3 +955,46 @@ func BookExists(ctx context.Context, exec boil.ContextExecutor, iD int) (bool, e
 func (o *Book) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
 	return BookExists(ctx, exec, o.ID)
 }
+
+// BooksWithSchema retrieves all the records of target schema using an executor.
+func BooksWithSchema(targetSchema string, mods ...qm.QueryMod) bookQuery {
+	schemaTable := fmt.Sprintf("\"%s\".book", targetSchema)
+	allColumns := fmt.Sprintf("\"%s\".book.*", targetSchema)
+	mods = append(mods, qm.From(schemaTable))
+	q := NewQuery(mods...)
+	if len(queries.GetSelect(q)) == 0 {
+		queries.SetSelect(q, []string{allColumns})
+	}
+
+	return bookQuery{q}
+}
+
+// FindBookWithSchema retrieves a single record by ID with an executor.
+// If selectCols is empty Find will return all columns.
+func FindBookWithSchema(ctx context.Context, exec boil.ContextExecutor, targetSchema string, iD int, selectCols ...string) (*Book, error) {
+	bookObj := &Book{}
+
+	sel := "*"
+	if len(selectCols) > 0 {
+		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
+	}
+	query := fmt.Sprintf(
+		"select %s from \"%s\".book where \"id\"=$1", sel, targetSchema,
+	)
+
+	q := queries.Raw(query, iD)
+
+	err := q.Bind(ctx, exec, bookObj)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, sql.ErrNoRows
+		}
+		return nil, errors.Wrap(err, "models: unable to select from book")
+	}
+
+	if err = bookObj.doAfterSelectHooks(ctx, exec); err != nil {
+		return bookObj, err
+	}
+
+	return bookObj, nil
+}
