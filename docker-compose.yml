@@ -1,0 +1,35 @@
+version: "3"
+services:
+  app:
+    container_name: sqlboiler
+    volumes:
+      - ./:/root/
+    working_dir: /root/
+    build:
+      context: .
+      dockerfile: ./deployment/docker/Dockerfile
+    tty: true
+    networks:
+      - sqlboiler-network
+
+  postgres:
+    container_name: sqlboiler-postgres
+    image: postgres:13.9-alpine
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: usr
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgresql/init:/docker-entrypoint-initdb.d
+      - ./data/postgresql/:/var/lib/postgresql/data
+    networks:
+      - sqlboiler-network
+
+networks:
+  sqlboiler-network:
