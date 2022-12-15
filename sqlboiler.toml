@@ -13,4 +13,3 @@ templates = [
   user   = "usr"
   pass   = "password"
   sslmode = "disable"
-  schema = "schema1"
